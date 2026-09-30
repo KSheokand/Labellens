@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.api.videos import get_db
 from backend.app.db.models import QualityIssueDB
+from backend.app.db.database import SessionLocal
 
 
 router = APIRouter(
@@ -98,4 +99,34 @@ def quality_issues(
         "total": total,
         "limit": limit,
         "offset": offset,
+    }
+
+
+@router.get("/breakdown")
+def quality_breakdown():
+    with SessionLocal() as session:
+        rows = session.execute(
+            select(
+                QualityIssueDB.issue_type,
+                QualityIssueDB.severity,
+                func.count(QualityIssueDB.id),
+            )
+            .group_by(
+                QualityIssueDB.issue_type,
+                QualityIssueDB.severity,
+            )
+            .order_by(
+                func.count(QualityIssueDB.id).desc()
+            )
+        ).all()
+
+    return {
+        "items": [
+            {
+                "issue_type": issue_type,
+                "severity": severity,
+                "count": count,
+            }
+            for issue_type, severity, count in rows
+        ]
     }
